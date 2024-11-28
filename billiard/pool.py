@@ -275,6 +275,7 @@ class Worker:
         )
 
     def __call__(self):
+        print("//// __call__1 ////")
         _exit = sys.exit
         _exitcode = [None]
 
@@ -286,8 +287,11 @@ class Worker:
         pid = os.getpid()
 
         self._make_child_methods()
+        print("//// __call__2 ////")
         self.after_fork()
+        print("//// __call__3 ////")
         self.on_loop_start(pid=pid)  # callback on loop start
+        print("//// __call__4 ////")
         try:
             sys.exit(self.workloop(pid=pid))
         except Exception as exc:
