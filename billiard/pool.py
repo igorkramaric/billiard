@@ -1141,6 +1141,7 @@ class Pool:
         return self._inqueue, self._outqueue, None
 
     def _create_worker_process(self, i):
+        print(f"++++ _create_worker_process 1")
         sentinel = self._ctx.Event() if self.allow_restart else None
         inq, outq, synq = self.get_process_queues()
         on_ready_counter = self._ctx.Value('i')
@@ -1154,16 +1155,21 @@ class Pool:
             max_memory_per_child=self._max_memory_per_child,
             on_ready_counter=on_ready_counter,
         ))
+        print(f"++++ _create_worker_process 2")
         self._pool.append(w)
         self._process_register_queues(w, (inq, outq, synq))
+        print(f"++++ _create_worker_process 3")
         w.name = w.name.replace('Process', 'PoolWorker')
         w.daemon = True
         w.index = i
         w.start()
+        print(f"++++ _create_worker_process 4")
         self._poolctrl[w.pid] = sentinel
         self._on_ready_counters[w.pid] = on_ready_counter
         if self.on_process_up:
+            print(f"++++ _create_worker_process 5")
             self.on_process_up(w)
+        print(f"++++ _create_worker_process 6")
         return w
 
     def process_flush_queues(self, worker):
@@ -1213,6 +1219,9 @@ class Pool:
                 del self._pool[i]
                 del self._poolctrl[worker.pid]
                 del self._on_ready_counters[worker.pid]
+
+                print(f"++++ Cleaning up worker {worker.pid}, exitcode: {exitcode}")
+
         if cleaned:
             all_pids = [w.pid for w in self._pool]
             for job in list(self._cache.values()):
@@ -1321,15 +1330,19 @@ class Pool:
         """Bring the number of pool processes up to the specified number,
         for use after reaping workers which have exited.
         """
+        print(f"++++ _repopulate_pool exitcodes: {exitcodes}")
         for i in range(self._processes - len(self._pool)):
             if self._state != RUN:
                 return
             try:
                 if exitcodes and exitcodes[i] not in (EX_OK, EX_RECYCLE):
+                    print(f"++++ _repopulate_pool calling restart_state for i={i}")
                     self.restart_state.step()
             except IndexError:
                 self.restart_state.step()
+            print(f"++++ _repopulate_pool _create_worker_process for i={i} avail_index={self._avail_index()} START")
             self._create_worker_process(self._avail_index())
+            print(f"++++ _repopulate_pool _create_worker_process for i={i} END")
             debug('added worker')
 
     def _avail_index(self):
@@ -1343,11 +1356,15 @@ class Pool:
     def _maintain_pool(self):
         """"Clean up any exited workers and start replacements for them.
         """
+        print(f"++++ _maintain_pool 1")
         joined = self._join_exited_workers()
         self._repopulate_pool(joined)
         for i in range(len(joined)):
+            print(f"++++ _maintain_pool 2")
             if self._putlock is not None:
+                print(f"++++ _maintain_pool 3")
                 self._putlock.release()
+                print(f"++++ _maintain_pool 4")
 
     def maintain_pool(self):
         if self._worker_handler._state == RUN and self._state == RUN:
@@ -1652,6 +1669,7 @@ class Pool:
                         result_handler, cache, timeout_handler,
                         help_stuff_finish_args):
 
+        print(f"++++ _terminate_pool 1")
         # this is guaranteed to only be called once
         debug('finalizing pool')
 
@@ -1660,21 +1678,26 @@ class Pool:
         task_handler.terminate()
         taskqueue.put(None)                 # sentinel
 
+        print(f"++++ _terminate_pool 2")
         debug('helping task handler/workers to finish')
         cls._help_stuff_finish(*help_stuff_finish_args)
 
         result_handler.terminate()
         cls._set_result_sentinel(outqueue, pool)
 
+        print(f"++++ _terminate_pool 3")
         if timeout_handler is not None:
             timeout_handler.terminate()
 
+        print(f"++++ _terminate_pool might terminate 4")
         # Terminate workers which haven't already finished
         if pool and hasattr(pool[0], 'terminate'):
             debug('terminating workers')
             for p in pool:
                 if p._is_alive():
+                    print(f"++++ _terminate_pool will terminate 4.1")
                     p.terminate()
+                    print(f"++++ _terminate_pool terminate done 4.2")
 
         debug('joining task handler')
         cls._stop_task_handler(task_handler)
@@ -1686,13 +1709,16 @@ class Pool:
             debug('joining timeout handler')
             timeout_handler.stop(TIMEOUT_MAX)
 
+        print(f"++++ _terminate_pool 5")
         if pool and hasattr(pool[0], 'terminate'):
             debug('joining pool workers')
             for p in pool:
                 if p.is_alive():
+                    print(f"++++ _terminate_pool 5.1")
                     # worker has not yet exited
                     debug('cleaning up worker %d', p.pid)
                     if p._popen is not None:
+                        print(f"++++ _terminate_pool 5.2")
                         p.join()
             debug('pool workers joined')
 
@@ -1700,6 +1726,8 @@ class Pool:
             inqueue.close()
         if outqueue:
             outqueue.close()
+
+        print(f"++++ _terminate_pool 6")
 
     @property
     def process_sentinels(self):
