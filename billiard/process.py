@@ -312,14 +312,18 @@ class BaseProcess:
                         handler.createLock()
             logging._lock = threading.RLock()
 
-            print(f"xxx _bootstrap 3")
             try:
+                print(f"xxx _bootstrap 3.1")
                 util._finalizer_registry.clear()
+                print(f"xxx _bootstrap 3.2")
                 util._run_after_forkers()
+                print(f"xxx _bootstrap 3.3")
             finally:
                 # delay finalization of the old process object until after
                 # _run_after_forkers() is executed
+                print(f"xxx _bootstrap 3.4")
                 del old_process
+                print(f"xxx _bootstrap 3.5")
             print(f"xxx _bootstrap 4")
             util.info('child process %s calling self.run()', self.pid)
             try:
