@@ -99,7 +99,7 @@ class BaseProcess:
             self.daemon = daemon
         if _dangling is not None:
             _dangling.add(self)
-        
+
         self._controlled_termination = False
 
     def run(self):
@@ -130,7 +130,7 @@ class BaseProcess:
         Terminate process; sends SIGTERM signal or uses TerminateProcess()
         '''
         self._popen.terminate()
-        
+
     def terminate_controlled(self):
         self._controlled_termination = True
         self.terminate()
@@ -280,6 +280,7 @@ class BaseProcess:
     ##
 
     def _bootstrap(self):
+        print(f"xxx _bootstrap 1")
         from . import util, context
         global _current_process, _process_counter, _children
 
@@ -296,7 +297,7 @@ class BaseProcess:
                     pass
             old_process = _current_process
             _set_current_process(self)
-
+            print(f"xxx _bootstrap 2")
             # Re-init logging system.
             # Workaround for https://bugs.python.org/issue6721/#msg140215
             # Python logging module uses RLock() objects which are broken
@@ -311,6 +312,7 @@ class BaseProcess:
                         handler.createLock()
             logging._lock = threading.RLock()
 
+            print(f"xxx _bootstrap 3")
             try:
                 util._finalizer_registry.clear()
                 util._run_after_forkers()
@@ -318,13 +320,17 @@ class BaseProcess:
                 # delay finalization of the old process object until after
                 # _run_after_forkers() is executed
                 del old_process
+            print(f"xxx _bootstrap 4")
             util.info('child process %s calling self.run()', self.pid)
             try:
                 self.run()
+                print(f"xxx _bootstrap 5")
                 exitcode = 0
             finally:
+                print(f"xxx _bootstrap 6")
                 util._exit_function()
         except SystemExit as exc:
+            print(f"xxx _bootstrap 7.1 ERR")
             if not exc.args:
                 exitcode = 1
             elif isinstance(exc.args[0], int):
@@ -334,17 +340,20 @@ class BaseProcess:
                 _maybe_flush(sys.stderr)
                 exitcode = 0 if isinstance(exc.args[0], str) else 1
         except:
+            print(f"xxx _bootstrap 7.2 ERR")
             exitcode = 1
             if not util.error('Process %s', self.name, exc_info=True):
                 import traceback
                 sys.stderr.write('Process %s:\n' % self.name)
                 traceback.print_exc()
         finally:
+            print(f"xxx _bootstrap 8")
             util.info('process %s exiting with exitcode %d',
                       self.pid, exitcode)
             _maybe_flush(sys.stdout)
             _maybe_flush(sys.stderr)
 
+        print(f"xxx _bootstrap 9")
         return exitcode
 
 #
