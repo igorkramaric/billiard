@@ -315,6 +315,13 @@ class BaseProcess:
             try:
                 print(f"xxx _bootstrap 3.1")
                 util._finalizer_registry.clear()
+
+                import multiprocessing.util as util
+
+                print("Registered after-fork hooks:")
+                for hook in util._afterfork_registry:
+                    print(f"Hook: {hook}")
+
                 print(f"xxx _bootstrap 3.2")
                 util._run_after_forkers()
                 print(f"xxx _bootstrap 3.3")
